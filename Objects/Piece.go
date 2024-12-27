@@ -2,21 +2,27 @@ package Objects
 
 type Piece struct {
 	Position Position
-	Shape    [][]string
+	shp      Shape
 }
 
 var (
-	Shape1 = [][]string{
-		{"🔳", "🔳", "🔳"},
-		{"🔳", "🔳", "🔳"},
+	Shape1 = Shape{
+		Shape: [][]string{
+			{"🔳", "🔳", "🔳"},
+			{"🔳", "🔳", "🔳"},
+		},
 	}
-	Shape2 = [][]string{
-		{"🔳", "🔳", "🔳"},
-		{" ", "🔳", " "},
+	Shape2 = Shape{
+		Shape: [][]string{
+			{"🔳", "🔳", "🔳"},
+			{" ", "🔳", " "},
+		},
 	}
-	Shape3 = [][]string{
-		{"🔳", "🔳", "🔳"},
-		{"🔳", " ", " "},
+	Shape3 = Shape{
+		Shape: [][]string{
+			{"🔳", "🔳", "🔳"},
+			{"🔳", " ", " "},
+		},
 	}
 )
 

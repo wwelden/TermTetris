@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"math/rand"
 )
 
 type Game struct {
@@ -64,20 +66,23 @@ func (g *Game) Start() {
 	g.isRunning = true
 	g.FillBoard(g.GameBoard.Width, g.GameBoard.Height)
 	g.loop()
-
 }
+
+func (g *Game) Stop() {
+	g.isRunning = false
+}
+
 func (g *Game) Update() {
 	//nothing for now
-
 }
 
-func (g *Game) SpawnPiece() {
-	g.Pieces = append(g.Pieces, &Piece{Position: Position{X: 10, Y: 0}, Shape: Shape1})
+func (g *Game) SpawnPiece(shape Shape, pos Position) {
+	g.Pieces = append(g.Pieces, &Piece{Position: pos, shp: shape})
 }
 
 func (g *Game) RenderPiece(pos Position) {
 	for _, piece := range g.Pieces {
-		for i, row := range piece.Shape {
+		for i, row := range piece.shp.Shape {
 			for j, cell := range row {
 				if cell == "🔳" {
 					g.GameBoard.Set(Position{
@@ -89,13 +94,14 @@ func (g *Game) RenderPiece(pos Position) {
 		}
 	}
 }
+
 func (g *Game) ClearPiece(pos Position) {
 	g.GameBoard.Set(pos, EmptyCell)
 }
 
 func (g *Game) UpdatePiece() {
 	for _, piece := range g.Pieces {
-		for i, row := range piece.Shape {
+		for i, row := range piece.shp.Shape {
 			for j, cell := range row {
 				if cell == "🔳" {
 					g.GameBoard.Set(Position{
@@ -107,7 +113,7 @@ func (g *Game) UpdatePiece() {
 		}
 
 		canFall := true
-		for i, row := range piece.Shape {
+		for i, row := range piece.shp.Shape {
 			for j, cell := range row {
 				if cell == "🔳" {
 					nextPos := Position{
@@ -130,7 +136,7 @@ func (g *Game) UpdatePiece() {
 		}
 
 		// Render piece at new position
-		for i, row := range piece.Shape {
+		for i, row := range piece.shp.Shape {
 			for j, cell := range row {
 				if cell == "🔳" {
 					g.GameBoard.Set(Position{
@@ -143,14 +149,38 @@ func (g *Game) UpdatePiece() {
 	}
 }
 
+func (g *Game) spawnPieces() {
+	go func() {
+		for {
+			shapes := []Shape{Shape1, Shape2, Shape3}
+			rand.Seed(time.Now().UnixNano())
+			randomShape := shapes[rand.Intn(len(shapes))]
+			randomX := rand.Intn(g.GameBoard.Width-4) + 1 // -4 for 3-wide shape + right wall, +1 to avoid left wall
+			g.SpawnPiece(randomShape, Position{X: randomX, Y: 0})
+			time.Sleep(2 * time.Second)
+		}
+	}()
+}
+
+func (g *Game) KeyPressed() {
+
+	var b = make([]byte, 1)
+	for g.isRunning {
+		os.Stdin.Read(b)
+		if b[0] == 'q' {
+			g.Stop()
+		}
+	}
+}
+
 func (g *Game) loop() {
+	g.spawnPieces()
 	for g.isRunning {
 		g.Render()
-		g.SpawnPiece()
+		go g.KeyPressed()
 		g.RenderPiece(Position{X: 10, Y: 0})
 		g.UpdatePiece()
 		g.Update()
 		time.Sleep(time.Millisecond * 16)
-
 	}
 }
