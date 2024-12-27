@@ -39,23 +39,52 @@ func (g *Game) FillBoard(width, height int) {
 }
 
 const (
-	EmptyCell       = 0
-	BlockCell       = 1
-	WallCell        = 2
-	EmptyCellSymbol = "  "
-	BlockCellSymbol = "🔳"
-	WallCellSymbol  = "⬜️"
+	EmptyCell        = 0
+	BlockCell        = 1
+	WallCell         = 2
+	RedCell          = 3
+	GreenCell        = 4
+	YellowCell       = 5
+	BlueCell         = 6
+	PurpleCell       = 7
+	OrangeCell       = 8
+	BrownCell        = 9
+	EmptyCellSymbol  = "  "
+	BlockCellSymbol  = "🔳"
+	WallCellSymbol   = "⬜️"
+	RedCellSymbol    = "🟥"
+	GreenCellSymbol  = "🟩"
+	YellowCellSymbol = "🟨"
+	BlueCellSymbol   = "🟦"
+	PurpleCellSymbol = "🟪"
+	OrangeCellSymbol = "🟧"
+	BrownCellSymbol  = "🟫"
 )
 
 func (g *Game) RenderBoard() {
 	for _, row := range g.GameBoard.Brd {
 		for _, cell := range row {
-			if cell == EmptyCell {
+			switch cell {
+			case EmptyCell:
 				g.DrawBuffer.WriteString(EmptyCellSymbol)
-			} else if cell == BlockCell {
+			case BlockCell:
 				g.DrawBuffer.WriteString(BlockCellSymbol)
-			} else if cell == WallCell {
+			case WallCell:
 				g.DrawBuffer.WriteString(WallCellSymbol)
+			case RedCell:
+				g.DrawBuffer.WriteString(RedCellSymbol)
+			case GreenCell:
+				g.DrawBuffer.WriteString(GreenCellSymbol)
+			case YellowCell:
+				g.DrawBuffer.WriteString(YellowCellSymbol)
+			case BlueCell:
+				g.DrawBuffer.WriteString(BlueCellSymbol)
+			case PurpleCell:
+				g.DrawBuffer.WriteString(PurpleCellSymbol)
+			case OrangeCell:
+				g.DrawBuffer.WriteString(OrangeCellSymbol)
+			case BrownCell:
+				g.DrawBuffer.WriteString(BrownCellSymbol)
 			}
 		}
 		g.DrawBuffer.WriteString("\n")
@@ -76,8 +105,8 @@ func (g *Game) Update() {
 	//nothing for now
 }
 
-func (g *Game) SpawnPiece(shape Shape, pos Position) {
-	g.Pieces = append(g.Pieces, &Piece{Position: pos, shp: shape})
+func (g *Game) SpawnPiece(shape Shape, pos Position, color Color) {
+	g.Pieces = append(g.Pieces, &Piece{Position: pos, shp: shape, color: color})
 }
 
 func (g *Game) ClearPiece(pos Position) {
@@ -86,9 +115,10 @@ func (g *Game) ClearPiece(pos Position) {
 
 func (g *Game) UpdatePiece() {
 	for _, piece := range g.Pieces {
+		// Clear previous position
 		for i, row := range piece.shp.Blocks {
 			for j, cell := range row {
-				if cell == "🔳" {
+				if cell != "  " {
 					g.GameBoard.Set(Position{
 						X: piece.Position.X + j,
 						Y: piece.Position.Y + i,
@@ -99,14 +129,16 @@ func (g *Game) UpdatePiece() {
 
 		piece.canFall = true
 		g.ActivePiece = piece
+
+		// Check if piece can fall
 		for i, row := range piece.shp.Blocks {
 			for j, cell := range row {
-				if cell == "🔳" {
+				if cell != "  " {
 					nextPos := Position{
 						X: piece.Position.X + j,
 						Y: piece.Position.Y + i + 1,
 					}
-					if nextPos.Y >= g.GameBoard.Height || g.GameBoard.Brd[nextPos.Y][nextPos.X] == BlockCell || g.GameBoard.Brd[nextPos.Y][nextPos.X] == WallCell {
+					if nextPos.Y >= g.GameBoard.Height || g.GameBoard.Brd[nextPos.Y][nextPos.X] == BlockCell || g.GameBoard.Brd[nextPos.Y][nextPos.X] == WallCell || g.GameBoard.Brd[nextPos.Y][nextPos.X] == RedCell || g.GameBoard.Brd[nextPos.Y][nextPos.X] == GreenCell || g.GameBoard.Brd[nextPos.Y][nextPos.X] == YellowCell || g.GameBoard.Brd[nextPos.Y][nextPos.X] == BlueCell || g.GameBoard.Brd[nextPos.Y][nextPos.X] == PurpleCell || g.GameBoard.Brd[nextPos.Y][nextPos.X] == OrangeCell || g.GameBoard.Brd[nextPos.Y][nextPos.X] == BrownCell {
 						piece.canFall = false
 						break
 					}
@@ -116,21 +148,50 @@ func (g *Game) UpdatePiece() {
 				break
 			}
 		}
+
 		if piece.canFall {
 			piece.Position.Fall()
 		}
-		for i, row := range piece.shp.Blocks {
-			for j, cell := range row {
-				if cell == "🔳" {
-					g.GameBoard.Set(Position{
-						X: piece.Position.X + j,
-						Y: piece.Position.Y + i,
-					}, BlockCell)
-				}
+
+		// Draw piece in new position
+		g.SetNewPosition(piece)
+	}
+}
+
+func (g *Game) GetColorCell(color Color) byte {
+	switch color.color {
+	case Red:
+		return RedCell
+	case Green:
+		return GreenCell
+	case Yellow:
+		return YellowCell
+	case Blue:
+		return BlueCell
+	case Purple:
+		return PurpleCell
+	case Orange:
+		return OrangeCell
+	case Brown:
+		return BrownCell
+	default:
+		return BlockCell
+	}
+}
+
+func (g *Game) SetNewPosition(piece *Piece) {
+	for i, row := range piece.shp.Blocks {
+		for j, cell := range row {
+			if cell != "  " {
+				g.GameBoard.Set(Position{
+					X: piece.Position.X + j,
+					Y: piece.Position.Y + i,
+				}, g.GetColorCell(piece.color))
 			}
 		}
 	}
 }
+
 func (g *Game) checkCompletedRow() bool {
 	for i, row := range g.GameBoard.Brd {
 		isRowFull := true
@@ -138,7 +199,7 @@ func (g *Game) checkCompletedRow() bool {
 			if j == 0 || j == len(row)-1 {
 				continue
 			}
-			if cell != BlockCell {
+			if cell != RedCell && cell != GreenCell && cell != YellowCell && cell != BlueCell && cell != PurpleCell && cell != OrangeCell && cell != BrownCell {
 				isRowFull = false
 				break
 			}
@@ -181,18 +242,31 @@ func (g *Game) removeCompletedRow() {
 func (g *Game) spawnPieces() {
 	go func() {
 		for {
-			shapes := []Shape{Shape1, Shape2, Shape3}
+			shapes := []Shape{Shape1, Shape2, Shape3, Shape4, Shape5, Shape6, Shape7}
+			colors := []Color{{Red}, {Green}, {Yellow}, {Blue}, {Purple}, {Orange}, {Brown}}
 			rand.Seed(time.Now().UnixNano())
 			randomShape := shapes[rand.Intn(len(shapes))]
+			randomColor := colors[rand.Intn(len(colors))]
 			randomX := rand.Intn(g.GameBoard.Width-4) + 1 // -4 for 3-wide shape + right wall, +1 to avoid left wall
-			g.SpawnPiece(randomShape, Position{X: randomX, Y: 0})
+			piece := &Piece{
+				Position: Position{X: randomX, Y: 0},
+				shp:      randomShape,
+				color:    randomColor,
+			}
+			g.SpawnPiece(piece.shp, piece.Position, piece.color)
 			time.Sleep(2 * time.Second) //change this to 2 seconds
 		}
 	}()
 }
 
 func (g *Game) RotatePiece() {
-	g.ActivePiece.Rotate()
+	if g.ActivePiece.rotated {
+		// g.ActivePiece.Rotate()
+		// g.ActivePiece.rotated = false
+	} else {
+		g.ActivePiece.Rotate()
+		g.ActivePiece.rotated = true
+	}
 }
 
 func (g *Game) checkForLoss() {
@@ -219,7 +293,6 @@ func (g *Game) loop() {
 	g.spawnPieces()
 	for g.isRunning {
 		g.Render()
-		// go g.KeyPressed()
 		g.UpdatePiece()
 		g.Update()
 		g.removeCompletedRow()

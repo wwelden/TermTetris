@@ -17,9 +17,6 @@ func newGame(width, height int) *Objects.Game {
 }
 
 func main() {
-	game := newGame(20, 23)
-
-	// Start keyboard input monitoring in a goroutine
-
+	game := newGame(40, 40)
 	game.Start()
 }
