@@ -191,21 +191,9 @@ func (g *Game) spawnPieces() {
 
 func (g *Game) checkForLoss() {
 	for _, piece := range g.Pieces {
-		// Check if any piece is at Y=0 AND can't fall AND has a block in its shape at Y=0
-		if piece.Position.Y == 0 && !piece.canFall {
-			// Verify there's actually a block at Y=0 in the piece's shape
-			hasBlockAtTop := false
-			for _, cell := range piece.shp.Shape[0] {
-				if cell == "🔳" {
-					hasBlockAtTop = true
-					break
-				}
-			}
-			if hasBlockAtTop {
-				fmt.Println("Game Over!")
-				g.Stop()
-				return
-			}
+		if (piece.Position.Y == 0) && !piece.canFall {
+			fmt.Println("Game Over!")
+			g.Stop()
 		}
 	}
 }
