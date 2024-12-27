@@ -34,7 +34,6 @@ func (g *Game) FillBoard(width, height int) {
 				g.GameBoard.Brd[i][j] = EmptyCell
 			}
 		}
-		// g.GameBoard.Brd[i][width-1] = WallCell
 	}
 }
 
@@ -80,21 +79,6 @@ func (g *Game) SpawnPiece(shape Shape, pos Position) {
 	g.Pieces = append(g.Pieces, &Piece{Position: pos, shp: shape})
 }
 
-func (g *Game) RenderPiece(pos Position) {
-	for _, piece := range g.Pieces {
-		for i, row := range piece.shp.Shape {
-			for j, cell := range row {
-				if cell == "🔳" {
-					g.GameBoard.Set(Position{
-						X: piece.Position.X + j,
-						Y: piece.Position.Y + i,
-					}, BlockCell)
-				}
-			}
-		}
-	}
-}
-
 func (g *Game) ClearPiece(pos Position) {
 	g.GameBoard.Set(pos, EmptyCell)
 }
@@ -112,7 +96,7 @@ func (g *Game) UpdatePiece() {
 			}
 		}
 
-		canFall := true
+		piece.canFall = true
 		for i, row := range piece.shp.Shape {
 			for j, cell := range row {
 				if cell == "🔳" {
@@ -121,21 +105,18 @@ func (g *Game) UpdatePiece() {
 						Y: piece.Position.Y + i + 1,
 					}
 					if nextPos.Y >= g.GameBoard.Height || g.GameBoard.Brd[nextPos.Y][nextPos.X] == BlockCell || g.GameBoard.Brd[nextPos.Y][nextPos.X] == WallCell {
-						canFall = false
+						piece.canFall = false
 						break
 					}
 				}
 			}
-			if !canFall {
+			if !piece.canFall {
 				break
 			}
 		}
-
-		if canFall {
+		if piece.canFall {
 			piece.Position.Fall()
 		}
-
-		// Render piece at new position
 		for i, row := range piece.shp.Shape {
 			for j, cell := range row {
 				if cell == "🔳" {
@@ -148,7 +129,53 @@ func (g *Game) UpdatePiece() {
 		}
 	}
 }
-
+func (g *Game) checkCompletedRow() bool {
+	for i, row := range g.GameBoard.Brd {
+		isRowFull := true
+		for j, cell := range row {
+			if j == 0 || j == len(row)-1 {
+				continue
+			}
+			if cell != BlockCell {
+				isRowFull = false
+				break
+			}
+		}
+		if isRowFull {
+			g.GameBoard.Brd[i] = make([]byte, g.GameBoard.Width)
+			g.GameBoard.Brd[i][0] = WallCell
+			g.GameBoard.Brd[i][g.GameBoard.Width-1] = WallCell
+			return true
+		}
+	}
+	return false
+}
+func (g *Game) removeCompletedRow() {
+	if g.checkCompletedRow() {
+		fmt.Println("Removing completed row")
+		for i := len(g.GameBoard.Brd) - 1; i >= 0; i-- {
+			isEmptyRow := true
+			for j := 1; j < len(g.GameBoard.Brd[i])-1; j++ {
+				if g.GameBoard.Brd[i][j] != EmptyCell {
+					isEmptyRow = false
+					break
+				}
+			}
+			if isEmptyRow {
+				for k := i; k > 0; k-- {
+					g.GameBoard.Brd[k] = make([]byte, g.GameBoard.Width)
+					copy(g.GameBoard.Brd[k], g.GameBoard.Brd[k-1])
+				}
+				g.GameBoard.Brd[0] = make([]byte, g.GameBoard.Width)
+				g.GameBoard.Brd[0][0] = WallCell
+				g.GameBoard.Brd[0][g.GameBoard.Width-1] = WallCell
+			}
+		}
+	}
+	if g.checkCompletedRow() {
+		g.removeCompletedRow()
+	}
+}
 func (g *Game) spawnPieces() {
 	go func() {
 		for {
@@ -157,9 +184,30 @@ func (g *Game) spawnPieces() {
 			randomShape := shapes[rand.Intn(len(shapes))]
 			randomX := rand.Intn(g.GameBoard.Width-4) + 1 // -4 for 3-wide shape + right wall, +1 to avoid left wall
 			g.SpawnPiece(randomShape, Position{X: randomX, Y: 0})
-			time.Sleep(2 * time.Second)
+			time.Sleep(time.Second / 2) //change this to 2 seconds
 		}
 	}()
+}
+
+func (g *Game) checkForLoss() {
+	for _, piece := range g.Pieces {
+		// Check if any piece is at Y=0 AND can't fall AND has a block in its shape at Y=0
+		if piece.Position.Y == 0 && !piece.canFall {
+			// Verify there's actually a block at Y=0 in the piece's shape
+			hasBlockAtTop := false
+			for _, cell := range piece.shp.Shape[0] {
+				if cell == "🔳" {
+					hasBlockAtTop = true
+					break
+				}
+			}
+			if hasBlockAtTop {
+				fmt.Println("Game Over!")
+				g.Stop()
+				return
+			}
+		}
+	}
 }
 
 func (g *Game) KeyPressed() {
@@ -177,10 +225,11 @@ func (g *Game) loop() {
 	g.spawnPieces()
 	for g.isRunning {
 		g.Render()
-		go g.KeyPressed()
-		g.RenderPiece(Position{X: 10, Y: 0})
+		// go g.KeyPressed()
 		g.UpdatePiece()
 		g.Update()
+		g.removeCompletedRow()
+		g.checkForLoss()
 		time.Sleep(time.Millisecond * 16)
 	}
 }

@@ -3,6 +3,7 @@ package Objects
 type Piece struct {
 	Position Position
 	shp      Shape
+	canFall  bool
 }
 
 var (
