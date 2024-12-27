@@ -268,14 +268,14 @@ func (g *Game) spawnPieces() {
 			rand.Seed(time.Now().UnixNano())
 			randomShape := shapes[rand.Intn(len(shapes))]
 			randomColor := colors[rand.Intn(len(colors))]
-			randomX := rand.Intn(g.GameBoard.Width-2) + 1 // -4 for 3-wide shape + right wall, +1 to avoid left wall
+			randomX := rand.Intn(g.GameBoard.Width-4) + 1 // -4 for 3-wide shape + right wall, +1 to avoid left wall
 			piece := &Piece{
 				Position: Position{X: randomX, Y: 0},
 				shp:      randomShape,
 				color:    randomColor,
 			}
 			g.SpawnPiece(piece.shp, piece.Position, piece.color)
-			time.Sleep(time.Second / 10) //change this to 4 seconds
+			time.Sleep(time.Second * 2) //change this to 4 seconds
 		}
 	}()
 }
