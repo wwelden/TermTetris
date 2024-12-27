@@ -8,19 +8,19 @@ type Piece struct {
 
 var (
 	Shape1 = Shape{
-		Shape: [][]string{
+		Blocks: [][]string{
 			{"🔳", "🔳", "🔳"},
 			{"🔳", "🔳", "🔳"},
 		},
 	}
 	Shape2 = Shape{
-		Shape: [][]string{
+		Blocks: [][]string{
 			{"🔳", "🔳", "🔳"},
 			{" ", "🔳", " "},
 		},
 	}
 	Shape3 = Shape{
-		Shape: [][]string{
+		Blocks: [][]string{
 			{"🔳", "🔳", "🔳"},
 			{"🔳", " ", " "},
 		},
@@ -33,4 +33,11 @@ func (p *Piece) MoveLeft() {
 
 func (p *Piece) MoveRight() {
 	p.Position.MoveRight()
+}
+
+func (p *Piece) MoveDown() {
+	p.Position.MoveDown()
+}
+func (p *Piece) Rotate() {
+	p.shp = p.shp.Rotate()
 }

@@ -10,10 +10,11 @@ import (
 )
 
 type Game struct {
-	isRunning  bool
-	GameBoard  *Board
-	DrawBuffer *bytes.Buffer
-	Pieces     []*Piece
+	isRunning   bool
+	GameBoard   *Board
+	DrawBuffer  *bytes.Buffer
+	Pieces      []*Piece
+	ActivePiece *Piece
 }
 
 func (g *Game) Render() {
@@ -85,7 +86,7 @@ func (g *Game) ClearPiece(pos Position) {
 
 func (g *Game) UpdatePiece() {
 	for _, piece := range g.Pieces {
-		for i, row := range piece.shp.Shape {
+		for i, row := range piece.shp.Blocks {
 			for j, cell := range row {
 				if cell == "🔳" {
 					g.GameBoard.Set(Position{
@@ -97,7 +98,8 @@ func (g *Game) UpdatePiece() {
 		}
 
 		piece.canFall = true
-		for i, row := range piece.shp.Shape {
+		g.ActivePiece = piece
+		for i, row := range piece.shp.Blocks {
 			for j, cell := range row {
 				if cell == "🔳" {
 					nextPos := Position{
@@ -117,7 +119,7 @@ func (g *Game) UpdatePiece() {
 		if piece.canFall {
 			piece.Position.Fall()
 		}
-		for i, row := range piece.shp.Shape {
+		for i, row := range piece.shp.Blocks {
 			for j, cell := range row {
 				if cell == "🔳" {
 					g.GameBoard.Set(Position{
@@ -184,9 +186,13 @@ func (g *Game) spawnPieces() {
 			randomShape := shapes[rand.Intn(len(shapes))]
 			randomX := rand.Intn(g.GameBoard.Width-4) + 1 // -4 for 3-wide shape + right wall, +1 to avoid left wall
 			g.SpawnPiece(randomShape, Position{X: randomX, Y: 0})
-			time.Sleep(time.Second / 2) //change this to 2 seconds
+			time.Sleep(2 * time.Second) //change this to 2 seconds
 		}
 	}()
+}
+
+func (g *Game) RotatePiece() {
+	g.ActivePiece.Rotate()
 }
 
 func (g *Game) checkForLoss() {
@@ -218,6 +224,7 @@ func (g *Game) loop() {
 		g.Update()
 		g.removeCompletedRow()
 		g.checkForLoss()
-		time.Sleep(time.Millisecond * 16)
+		time.Sleep(time.Millisecond * 100)
+		// g.RotatePiece()
 	}
 }
