@@ -51,6 +51,16 @@ var (
 			{"  ", "🔳", "🔳"},
 		},
 	}
+	Shape8 = Shape{
+		Blocks: [][]string{
+			{"🔳"},
+		},
+	}
+	Shape9 = Shape{
+		Blocks: [][]string{
+			{"🔳", "🔳", "🔳", "🔳"},
+		},
+	}
 )
 
 func (p *Piece) MoveLeft() {

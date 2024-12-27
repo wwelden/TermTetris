@@ -17,6 +17,6 @@ func newGame(width, height int) *Objects.Game {
 }
 
 func main() {
-	game := newGame(40, 40)
+	game := newGame(40, 65)
 	game.Start()
 }

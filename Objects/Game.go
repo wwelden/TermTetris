@@ -10,11 +10,14 @@ import (
 )
 
 type Game struct {
-	isRunning   bool
-	GameBoard   *Board
-	DrawBuffer  *bytes.Buffer
-	Pieces      []*Piece
-	ActivePiece *Piece
+	isRunning     bool
+	GameBoard     *Board
+	DrawBuffer    *bytes.Buffer
+	Pieces        []*Piece
+	ActivePiece   *Piece
+	PressedKey    chan byte
+	Score         int
+	RowHasCleared bool
 }
 
 func (g *Game) Render() {
@@ -92,6 +95,7 @@ func (g *Game) RenderBoard() {
 }
 
 func (g *Game) Start() {
+	g.Score = 0
 	g.isRunning = true
 	g.FillBoard(g.GameBoard.Width, g.GameBoard.Height)
 	g.loop()
@@ -205,6 +209,8 @@ func (g *Game) checkCompletedRow() bool {
 			}
 		}
 		if isRowFull {
+			g.Score += 100
+
 			g.GameBoard.Brd[i] = make([]byte, g.GameBoard.Width)
 			g.GameBoard.Brd[i][0] = WallCell
 			g.GameBoard.Brd[i][g.GameBoard.Width-1] = WallCell
@@ -213,9 +219,17 @@ func (g *Game) checkCompletedRow() bool {
 	}
 	return false
 }
+func (g *Game) allpiecesActive() {
+	g.RowHasCleared = true
+	for _, piece := range g.Pieces {
+		piece.canFall = true
+	}
+}
+
 func (g *Game) removeCompletedRow() {
 	if g.checkCompletedRow() {
 		fmt.Println("Removing completed row")
+		g.allpiecesActive()
 		for i := len(g.GameBoard.Brd) - 1; i >= 0; i-- {
 			isEmptyRow := true
 			for j := 1; j < len(g.GameBoard.Brd[i])-1; j++ {
@@ -239,22 +253,29 @@ func (g *Game) removeCompletedRow() {
 		g.removeCompletedRow()
 	}
 }
+
+func (g *Game) printBoard() {
+	for _, row := range g.GameBoard.Brd {
+		fmt.Println(row)
+		fmt.Println("\n")
+	}
+}
 func (g *Game) spawnPieces() {
 	go func() {
 		for {
-			shapes := []Shape{Shape1, Shape2, Shape3, Shape4, Shape5, Shape6, Shape7}
+			shapes := []Shape{Shape1, Shape2, Shape3, Shape4, Shape5, Shape6, Shape7, Shape8, Shape9}
 			colors := []Color{{Red}, {Green}, {Yellow}, {Blue}, {Purple}, {Orange}, {Brown}}
 			rand.Seed(time.Now().UnixNano())
 			randomShape := shapes[rand.Intn(len(shapes))]
 			randomColor := colors[rand.Intn(len(colors))]
-			randomX := rand.Intn(g.GameBoard.Width-4) + 1 // -4 for 3-wide shape + right wall, +1 to avoid left wall
+			randomX := rand.Intn(g.GameBoard.Width-2) + 1 // -4 for 3-wide shape + right wall, +1 to avoid left wall
 			piece := &Piece{
 				Position: Position{X: randomX, Y: 0},
 				shp:      randomShape,
 				color:    randomColor,
 			}
 			g.SpawnPiece(piece.shp, piece.Position, piece.color)
-			time.Sleep(2 * time.Second) //change this to 2 seconds
+			time.Sleep(time.Second / 10) //change this to 4 seconds
 		}
 	}()
 }
@@ -273,19 +294,47 @@ func (g *Game) checkForLoss() {
 	for _, piece := range g.Pieces {
 		if (piece.Position.Y == 0) && !piece.canFall {
 			fmt.Println("Game Over!")
+			fmt.Println("Score:", g.Score)
+			// g.printBoard()
 			g.Stop()
 		}
 	}
 }
 
-func (g *Game) KeyPressed() {
+func (g *Game) MoveRight() {
+	g.ActivePiece.Position.MoveRight()
+}
 
-	var b = make([]byte, 1)
-	for g.isRunning {
-		os.Stdin.Read(b)
-		if b[0] == 'q' {
-			g.Stop()
-		}
+func (g *Game) MoveLeft() {
+	g.ActivePiece.Position.MoveLeft()
+}
+
+func (g *Game) MoveDown() {
+	g.ActivePiece.Position.Fall()
+}
+
+func (g *Game) KeyPressed() {
+	b := make([]byte, 1)
+
+	go func() {
+		os.Stdin.SetReadDeadline(time.Now().Add(time.Millisecond * 16))
+		os.Stdin.Read(b) // block only for above duration
+		g.PressedKey <- b[0]
+	}()
+}
+func (g *Game) GetKeyPressed() {
+	key := <-g.PressedKey
+	switch key {
+	case 'q':
+		g.Stop()
+	case 'w':
+		g.RotatePiece()
+	case 'a':
+		g.MoveLeft()
+	case 'd':
+		g.MoveRight()
+	case 's':
+		g.MoveDown()
 	}
 }
 
@@ -297,7 +346,9 @@ func (g *Game) loop() {
 		g.Update()
 		g.removeCompletedRow()
 		g.checkForLoss()
-		time.Sleep(time.Millisecond * 100)
-		// g.RotatePiece()
+		time.Sleep(time.Millisecond * 16)
+		// g.KeyPressed()
+		// g.GetKeyPressed()
+
 	}
 }
