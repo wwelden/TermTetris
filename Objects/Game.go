@@ -257,7 +257,7 @@ func (g *Game) removeCompletedRow() {
 func (g *Game) printBoard() {
 	for _, row := range g.GameBoard.Brd {
 		fmt.Println(row)
-		fmt.Println("\n")
+		// fmt.Println("\n")
 	}
 }
 func (g *Game) spawnPieces() {
