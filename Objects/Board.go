@@ -7,5 +7,8 @@ type Board struct {
 }
 
 func (b *Board) Set(pos Position, cell byte) {
+	if pos.Y < 0 || pos.Y >= b.Height || pos.X < 0 || pos.X >= b.Width {
+		return
+	}
 	b.Brd[pos.Y][pos.X] = cell
 }
