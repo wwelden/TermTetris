@@ -13,6 +13,7 @@ func newGame(width, height int) *Objects.Game {
 			Height: height,
 			Brd:    make([][]byte, height),
 		},
+		PressedKey: make(chan byte, 1),
 	}
 }
 

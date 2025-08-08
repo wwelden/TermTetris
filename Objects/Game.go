@@ -261,33 +261,25 @@ func (g *Game) printBoard() {
 	}
 }
 func (g *Game) spawnPieces() {
-	go func() {
-		for {
-			shapes := []Shape{Shape1, Shape2, Shape3, Shape4, Shape5, Shape6, Shape7, Shape8, Shape9}
-			colors := []Color{{Red}, {Green}, {Yellow}, {Blue}, {Purple}, {Orange}, {Brown}}
-			rand.Seed(time.Now().UnixNano())
-			randomShape := shapes[rand.Intn(len(shapes))]
-			randomColor := colors[rand.Intn(len(colors))]
-			randomX := rand.Intn(g.GameBoard.Width-4) + 1 // -4 for 3-wide shape + right wall, +1 to avoid left wall
-			piece := &Piece{
-				Position: Position{X: randomX, Y: 0},
-				shp:      randomShape,
-				color:    randomColor,
-			}
-			g.SpawnPiece(piece.shp, piece.Position, piece.color)
-			time.Sleep(time.Second * 2) //change this to 4 seconds
-		}
-	}()
+	shapes := []Shape{Shape1, Shape2, Shape3, Shape4, Shape5, Shape6, Shape7, Shape8, Shape9}
+	colors := []Color{{Red}, {Green}, {Yellow}, {Blue}, {Purple}, {Orange}, {Brown}}
+	rand.Seed(time.Now().UnixNano())
+	randomShape := shapes[rand.Intn(len(shapes))]
+	randomColor := colors[rand.Intn(len(colors))]
+	randomX := rand.Intn(g.GameBoard.Width-4) + 1 // -4 for 3-wide shape + right wall, +1 to avoid left wall
+	piece := &Piece{
+		Position: Position{X: randomX, Y: 0},
+		shp:      randomShape,
+		color:    randomColor,
+	}
+	g.SpawnPiece(piece.shp, piece.Position, piece.color)
 }
 
 func (g *Game) RotatePiece() {
-	if g.ActivePiece.rotated {
-		// g.ActivePiece.Rotate()
-		// g.ActivePiece.rotated = false
-	} else {
-		g.ActivePiece.Rotate()
-		g.ActivePiece.rotated = true
+	if g.ActivePiece == nil {
+		return
 	}
+	g.ActivePiece.Rotate()
 }
 
 func (g *Game) checkForLoss() {
@@ -339,16 +331,20 @@ func (g *Game) GetKeyPressed() {
 }
 
 func (g *Game) loop() {
-	g.spawnPieces()
+	ticker := time.NewTicker(time.Millisecond * 16)
+	spawnTicker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	defer spawnTicker.Stop()
 	for g.isRunning {
-		g.Render()
-		g.UpdatePiece()
-		g.Update()
-		g.removeCompletedRow()
-		g.checkForLoss()
-		time.Sleep(time.Millisecond * 16)
-		// g.KeyPressed()
-		// g.GetKeyPressed()
-
+		select {
+		case <-ticker.C:
+			g.Render()
+			g.UpdatePiece()
+			g.Update()
+			g.removeCompletedRow()
+			g.checkForLoss()
+		case <-spawnTicker.C:
+			g.spawnPieces()
+		}
 	}
 }
