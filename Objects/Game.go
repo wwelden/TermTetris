@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"math/rand"
+	"golang.org/x/term"
 )
 
 type Game struct {
@@ -18,6 +19,7 @@ type Game struct {
 	PressedKey    chan byte
 	Score         int
 	RowHasCleared bool
+	oldState      *term.State
 }
 
 func (g *Game) Render() {
@@ -97,12 +99,35 @@ func (g *Game) RenderBoard() {
 func (g *Game) Start() {
 	g.Score = 0
 	g.isRunning = true
+	g.PressedKey = make(chan byte, 64)
+
+	// enable raw mode for single-key input and start input reader
+	fd := int(os.Stdin.Fd())
+	if oldState, err := term.MakeRaw(fd); err == nil {
+		g.oldState = oldState
+	}
+	go func() {
+		b := make([]byte, 1)
+		for g.isRunning {
+			_ = os.Stdin.SetReadDeadline(time.Now().Add(16 * time.Millisecond))
+			if _, err := os.Stdin.Read(b); err == nil {
+				select {
+				case g.PressedKey <- b[0]:
+				default:
+				}
+			}
+		}
+	}()
+
 	g.FillBoard(g.GameBoard.Width, g.GameBoard.Height)
 	g.loop()
 }
 
 func (g *Game) Stop() {
 	g.isRunning = false
+	if g.oldState != nil {
+		_ = term.Restore(int(os.Stdin.Fd()), g.oldState)
+	}
 }
 
 func (g *Game) Update() {
@@ -281,6 +306,9 @@ func (g *Game) spawnPieces() {
 }
 
 func (g *Game) RotatePiece() {
+	if g.ActivePiece == nil {
+		return
+	}
 	if g.ActivePiece.rotated {
 		// g.ActivePiece.Rotate()
 		// g.ActivePiece.rotated = false
@@ -302,14 +330,23 @@ func (g *Game) checkForLoss() {
 }
 
 func (g *Game) MoveRight() {
+	if g.ActivePiece == nil {
+		return
+	}
 	g.ActivePiece.Position.MoveRight()
 }
 
 func (g *Game) MoveLeft() {
+	if g.ActivePiece == nil {
+		return
+	}
 	g.ActivePiece.Position.MoveLeft()
 }
 
 func (g *Game) MoveDown() {
+	if g.ActivePiece == nil {
+		return
+	}
 	g.ActivePiece.Position.Fall()
 }
 
@@ -323,18 +360,21 @@ func (g *Game) KeyPressed() {
 	}()
 }
 func (g *Game) GetKeyPressed() {
-	key := <-g.PressedKey
-	switch key {
-	case 'q':
-		g.Stop()
-	case 'w':
-		g.RotatePiece()
-	case 'a':
-		g.MoveLeft()
-	case 'd':
-		g.MoveRight()
-	case 's':
-		g.MoveDown()
+	select {
+	case key := <-g.PressedKey:
+		switch key {
+		case 'q':
+			g.Stop()
+		case 'w':
+			g.RotatePiece()
+		case 'a':
+			g.MoveLeft()
+		case 'd':
+			g.MoveRight()
+		case 's':
+			g.MoveDown()
+		}
+	default:
 	}
 }
 
@@ -346,6 +386,7 @@ func (g *Game) loop() {
 		g.Update()
 		g.removeCompletedRow()
 		g.checkForLoss()
+		g.GetKeyPressed()
 		time.Sleep(time.Millisecond * 16)
 		// g.KeyPressed()
 		// g.GetKeyPressed()
