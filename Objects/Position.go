@@ -16,6 +16,7 @@ func (p *Position) MoveLeft() {
 func (p *Position) MoveRight() {
 	p.X++
 }
-func (p *Position) MoveDown() {
+
+func (p *Position) MoveUp() {
 	p.Y--
 }

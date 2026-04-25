@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+
 	"termtetris/Objects"
 )
 
@@ -17,6 +18,6 @@ func newGame(width, height int) *Objects.Game {
 }
 
 func main() {
-	game := newGame(40, 65)
+	game := newGame(12, 22)
 	game.Start()
 }
