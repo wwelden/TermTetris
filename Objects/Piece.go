@@ -99,6 +99,6 @@ func (p *Piece) CellsAt(pos Position, shp Shape) []Position {
 	return out
 }
 
-func (p *Piece) Color() Color   { return p.color }
-func (p *Piece) Shape() Shape   { return p.shp }
+func (p *Piece) Color() Color     { return p.color }
+func (p *Piece) Shape() Shape     { return p.shp }
 func (p *Piece) SetShape(s Shape) { p.shp = s }

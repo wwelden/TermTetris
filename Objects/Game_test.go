@@ -113,13 +113,18 @@ func TestFitsOverlap(t *testing.T) {
 	}
 }
 
-func TestGravityLocksAndSpawns(t *testing.T) {
+func addFalling(g *Game, p *Piece) {
+	g.Falling = append(g.Falling, p)
+	g.ActivePiece = p
+}
+
+func TestGravityLocksOnFloor(t *testing.T) {
 	g := newTestGame(8, 6)
-	g.ActivePiece = &Piece{
+	addFalling(g, &Piece{
 		Position: Position{X: 3, Y: g.GameBoard.Height - 3}, // one above bottom wall
 		shp:      Shape{Blocks: [][]string{{"X"}}},
 		color:    Color{Red},
-	}
+	})
 	g.gravityStep()
 	// Should have fallen one row and not yet locked.
 	if g.ActivePiece == nil {
@@ -128,13 +133,16 @@ func TestGravityLocksAndSpawns(t *testing.T) {
 	if g.ActivePiece.Position.Y != g.GameBoard.Height-2 {
 		t.Errorf("piece Y = %d, want %d", g.ActivePiece.Position.Y, g.GameBoard.Height-2)
 	}
-	// Next step should lock and spawn a new piece.
+	// Next step locks it into the board and removes it from the air.
 	g.gravityStep()
 	if g.GameBoard.Brd[g.GameBoard.Height-2][3] != RedCell {
 		t.Errorf("piece should have locked at (3, h-2), got %d", g.GameBoard.Brd[g.GameBoard.Height-2][3])
 	}
-	if g.ActivePiece == nil {
-		t.Errorf("a new piece should have spawned after lock")
+	if len(g.Falling) != 0 {
+		t.Errorf("locked piece should leave the falling list, %d remain", len(g.Falling))
+	}
+	if g.ActivePiece != nil {
+		t.Errorf("no falling pieces remain, ActivePiece should be nil")
 	}
 }
 
