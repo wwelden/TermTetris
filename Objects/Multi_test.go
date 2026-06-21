@@ -217,3 +217,93 @@ func TestControlsWithNoActivePieceAreSafe(t *testing.T) {
 	g.applyKey('s')
 	g.applyKey('w')
 }
+
+// noFallingOverlap asserts that no two falling pieces share a cell.
+func noFallingOverlap(t *testing.T, g *Game) {
+	t.Helper()
+	seen := make(map[Position]int)
+	for idx, p := range g.Falling {
+		for _, c := range p.Cells() {
+			if prev, dup := seen[c]; dup {
+				t.Fatalf("falling pieces %d and %d overlap at %v", prev, idx, c)
+			}
+			seen[c] = idx
+		}
+	}
+}
+
+// Regression: settleAfterClear must respect other falling pieces, not just
+// the locked board, or it can ride two pieces onto the same cell.
+func TestSettleAfterClearNoFallingOverlap(t *testing.T) {
+	g := multiTestGame(10, 10)
+	g.GameBoard.Brd[4][3] = GreenCell                                            // locked cell that overtakes piece A
+	a := &Piece{Position: Position{X: 3, Y: 4}, shp: Shape8, color: Color{Red}}  // overlaps locked cell
+	b := &Piece{Position: Position{X: 3, Y: 5}, shp: Shape8, color: Color{Blue}} // directly below A
+	g.Falling = []*Piece{a, b}
+	g.ActivePiece = b
+
+	g.settleAfterClear(1)
+
+	noFallingOverlap(t, g)
+	// A cannot ride onto B, so it stays put; B is undisturbed.
+	if b.Position.Y != 5 {
+		t.Errorf("piece B should be undisturbed at Y=5, got %d", b.Position.Y)
+	}
+}
+
+// Regression: settleAfterClear must never push a piece out of bounds or lock
+// an out-of-bounds piece (which previously panicked in Board.Set).
+func TestSettleAfterClearStaysInBoundsNoPanic(t *testing.T) {
+	g := multiTestGame(8, 8)          // floor wall at row 7
+	g.GameBoard.Brd[6][3] = GreenCell // locked cell overtaking the piece
+	p := &Piece{Position: Position{X: 3, Y: 6}, shp: Shape8, color: Color{Red}}
+	g.Falling = []*Piece{p}
+	g.ActivePiece = p
+
+	g.settleAfterClear(5) // large clear count; piece cannot ride down (wall below)
+
+	if p.Position.Y >= g.GameBoard.Height {
+		t.Fatalf("piece left the board at Y=%d (height %d)", p.Position.Y, g.GameBoard.Height)
+	}
+	if len(g.Falling) != 1 {
+		t.Errorf("piece should remain falling, got %d", len(g.Falling))
+	}
+}
+
+// lockPiece on an out-of-bounds piece must not panic (Board.Set guards it).
+func TestLockPieceOutOfBoundsIsSafe(t *testing.T) {
+	g := multiTestGame(8, 8)
+	g.isRunning = true
+	p := &Piece{Position: Position{X: 3, Y: 20}, shp: Shape9, color: Color{Red}} // far below the board
+	g.lockPiece(p)
+	// Nothing to assert beyond "did not panic"; the board is untouched.
+}
+
+func TestBoardSetOutOfBoundsIsNoop(t *testing.T) {
+	g := multiTestGame(5, 5)
+	g.GameBoard.Set(Position{X: 99, Y: 99}, RedCell) // must not panic
+	g.GameBoard.Set(Position{X: -1, Y: 2}, RedCell)
+	g.GameBoard.Set(Position{X: 2, Y: 2}, RedCell)
+	if g.GameBoard.Brd[2][2] != RedCell {
+		t.Errorf("in-bounds Set should still write, got %d", g.GameBoard.Brd[2][2])
+	}
+}
+
+// End-to-end: drive the real engine through many random ticks and assert the
+// no-overlap invariant holds and nothing panics.
+func TestEngineStressNoOverlapNoPanic(t *testing.T) {
+	g := multiTestGame(12, 16)
+	for tick := range 4000 {
+		if tick%5 == 0 {
+			g.spawnNext()
+		}
+		g.gravityStep()
+		noFallingOverlap(t, g)
+		if g.gameOver {
+			g.gameOver = false
+			g.Falling = nil
+			g.ActivePiece = nil
+			g.FillBoard(g.GameBoard.Width, g.GameBoard.Height)
+		}
+	}
+}

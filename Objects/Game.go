@@ -444,24 +444,23 @@ func (g *Game) reassignActive() {
 	}
 }
 
-// settleAfterClear corrects falling pieces whose cells were overtaken when
-// the locked stack shifted down past an overhang. Such a piece rides down
-// with the shift; if it cannot find room it locks where it lands.
+// settleAfterClear corrects falling pieces whose cell was overtaken when the
+// locked stack shifted down past an overhang. Such a piece rides down with
+// the shift, but only into positions clear of both locked cells and other
+// falling pieces, and never past the bottom of the well. A piece with no
+// valid spot to drop into is left where it is; the next gravity step resolves
+// it. Pieces are never locked here, so a stray position can't be written
+// out of bounds.
 func (g *Game) settleAfterClear(cleared int) {
-	survivors := g.Falling[:0]
 	for _, p := range g.Falling {
-		moved := 0
-		for !g.fits(p.shp, p.Position) && moved < cleared {
-			p.Position.Y++
-			moved++
-		}
-		if g.fits(p.shp, p.Position) {
-			survivors = append(survivors, p)
-		} else {
-			g.lockPiece(p)
+		for moved := 0; moved < cleared && !g.fitsWithFalling(p.shp, p.Position, p); moved++ {
+			down := Position{X: p.Position.X, Y: p.Position.Y + 1}
+			if !g.fitsWithFalling(p.shp, down, p) {
+				break
+			}
+			p.Position = down
 		}
 	}
-	g.Falling = survivors
 	g.reassignActive()
 }
 
