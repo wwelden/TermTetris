@@ -6,7 +6,12 @@ type Board struct {
 	Brd    [][]byte
 }
 
+// Set writes a cell, ignoring out-of-bounds positions so a stray write can
+// never panic the game loop.
 func (b *Board) Set(pos Position, cell byte) {
+	if !b.InBounds(pos) {
+		return
+	}
 	b.Brd[pos.Y][pos.X] = cell
 }
 
