@@ -35,7 +35,7 @@ const (
 	OrangeCell       = 8
 	BrownCell        = 9
 	EmptyCellSymbol  = "  "
-	WallCellSymbol   = "[]"
+	WallCellSymbol   = "⬜"
 	RedCellSymbol    = "🟥"
 	GreenCellSymbol  = "🟩"
 	YellowCellSymbol = "🟨"
